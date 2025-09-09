@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: banking_voice_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: banking_voice_app
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - banking_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  banking_app:
+    build: .
+    container_name: banking_voice_app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      MONGODB_URL: mongodb://admin:password123@mongodb:27017/banking_voice_app?authSource=admin
+      DATABASE_NAME: banking_voice_app
+      COLLECTION_NAME: voice_actions
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      DEBUG: "false"
+      TEMP_AUDIO_DIR: /app/temp_audio
+    volumes:
+      - ./temp_audio:/app/temp_audio
+      - ./static:/app/static
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - banking_network
+    healthcheck:
+      test: curl -f http://localhost:8000/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  banking_network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local

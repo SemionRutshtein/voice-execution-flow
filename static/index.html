@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banking Voice Action</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Banking Voice Assistant</h1>
+        </header>
+        
+        <main>
+            <div class="question-section">
+                <h2>What is the bank action that you want to do?</h2>
+            </div>
+            
+            <div class="voice-section">
+                <button id="recordButton" class="record-button" aria-label="Record voice message">
+                    <svg class="mic-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C10.3431 2 9 3.34315 9 5V12C9 13.6569 10.3431 15 12 15C13.6569 15 15 13.6569 15 12V5C15 3.34315 13.6569 2 12 2Z" fill="currentColor"/>
+                        <path d="M19 10V12C19 16.4183 15.4183 20 11 20H10V22H14C14.5523 22 15 22.4477 15 23C15 23.5523 14.5523 24 14 24H10C9.44772 24 9 23.5523 9 23C9 22.4477 9.44772 22 10 22H10V20C5.58172 20 2 16.4183 2 12V10C2 9.44772 2.44772 9 3 9C3.55228 9 4 9.44772 4 10V12C4 15.3137 6.68629 18 10 18H14C17.3137 18 20 15.3137 20 12V10C20 9.44772 20.4477 9 21 9C21.5523 9 22 9.44772 22 10Z" fill="currentColor"/>
+                    </svg>
+                    <span class="button-text">Press to Record</span>
+                </button>
+                
+                <div class="status-section">
+                    <div id="statusMessage" class="status-message"></div>
+                    <div id="recordingTimer" class="recording-timer hidden">0:00</div>
+                </div>
+            </div>
+            
+            <div class="result-section">
+                <div id="transcriptionResult" class="transcription-result hidden">
+                    <h3>Your Request:</h3>
+                    <p id="transcriptionText"></p>
+                </div>
+                
+                <div id="errorMessage" class="error-message hidden">
+                    <h3>Error:</h3>
+                    <p id="errorText"></p>
+                </div>
+            </div>
+            
+            <div class="history-section">
+                <button id="showHistoryButton" class="history-button">Show Previous Requests</button>
+                <div id="historyContainer" class="history-container hidden">
+                    <h3>Previous Requests:</h3>
+                    <div id="historyList" class="history-list"></div>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>&copy; 2024 Banking Voice Assistant. Secure voice banking at your fingertips.</p>
+        </footer>
+    </div>
+    
+    <!-- Audio element for playback -->
+    <audio id="audioPlayback" style="display: none;"></audio>
+    
+    <script src="/static/script.js"></script>
+</body>
+</html>
