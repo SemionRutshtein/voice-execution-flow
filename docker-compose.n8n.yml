@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  banking-app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017
+      - DATABASE_NAME=banking_voice_app
+      - N8N_WEBHOOK_URL=http://n8n:5678/webhook/voice-process
+      - DEBUG=true
+    depends_on:
+      - mongodb
+      - n8n
+    networks:
+      - banking-network
+
+  mongodb:
+    image: mongo:5.0
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_DATABASE: banking_voice_app
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - banking-network
+
+  n8n:
+    image: n8nio/n8n:latest
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - banking-network
+
+volumes:
+  mongodb_data:
+  n8n_data:
+
+networks:
+  banking-network:
+    driver: bridge

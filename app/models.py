@@ -71,3 +71,16 @@ class VoiceActionResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+
+class VoiceWebhookRequest(BaseModel):
+    userId: str = Field(..., description="User ID for the voice message")
+    audioTranscript: str = Field(..., description="Transcribed voice message")
+    audioFileName: Optional[str] = Field(None, description="Audio file name if available")
+
+
+class N8NProcessingResult(BaseModel):
+    success: bool
+    result: Optional[Any] = None
+    error: Optional[str] = None
+    processingTime: Optional[float] = None

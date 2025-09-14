@@ -25,4 +25,8 @@ class Settings:
         "http://127.0.0.1:8000",
     ]
 
+    # N8N Configuration
+    N8N_WEBHOOK_URL: str = os.getenv("N8N_WEBHOOK_URL", "http://localhost:5678/webhook/voice-process")
+    N8N_TIMEOUT: int = int(os.getenv("N8N_TIMEOUT", "30"))
+
 settings = Settings()
