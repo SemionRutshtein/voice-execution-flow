@@ -198,6 +198,73 @@ main {
     font-size: 1rem;
 }
 
+.n8n-result {
+    background: #f8f9fb;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 15px;
+    border-left: 4px solid #9b59b6;
+}
+
+.n8n-result h3 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+}
+
+.n8n-success {
+    border-left: 3px solid #27ae60;
+    padding-left: 15px;
+}
+
+.n8n-error {
+    border-left: 3px solid #e74c3c;
+    padding-left: 15px;
+}
+
+.n8n-status {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.n8n-success .n8n-status {
+    color: #27ae60;
+}
+
+.n8n-error .n8n-status {
+    color: #e74c3c;
+}
+
+.n8n-timing {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+}
+
+.n8n-response {
+    margin-top: 10px;
+}
+
+.n8n-response strong {
+    color: #2c3e50;
+}
+
+.n8n-response pre {
+    background: #ecf0f1;
+    border-radius: 5px;
+    padding: 10px;
+    margin-top: 5px;
+    font-size: 0.85rem;
+    overflow-x: auto;
+    color: #2c3e50;
+}
+
+.n8n-error-message {
+    margin-top: 10px;
+    color: #e74c3c;
+}
+
 /* History section */
 .history-section {
     border-top: 1px solid #ecf0f1;

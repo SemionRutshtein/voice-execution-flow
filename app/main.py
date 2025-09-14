@@ -10,8 +10,9 @@ from fastapi.responses import HTMLResponse, FileResponse
 
 from .config import settings
 from .database import connect_to_mongo, close_mongo_connection, create_voice_action, get_voice_actions_by_user, get_voice_action_by_id
-from .models import VoiceActionCreate, VoiceActionResponse
+from .models import VoiceActionCreate, VoiceActionResponse, VoiceWebhookRequest, N8NProcessingResult
 from .audio_processor import audio_processor
+from .n8n_service import n8n_service
 
 # Configure logging
 logging.basicConfig(
@@ -108,19 +109,27 @@ async def upload_audio(
         transcription, processed_filename = await audio_processor.process_audio_file(
             content, file.filename
         )
-        
+
+        # Process through n8n workflow
+        n8n_result = await n8n_service.process_voice_message(
+            user_id=user_id,
+            transcript=transcription,
+            audio_filename=processed_filename
+        )
+
         # Create voice action record
         voice_action = VoiceActionCreate(
             userId=user_id,
             audioTranscript=transcription,
-            audioFileName=processed_filename
+            audioFileName=processed_filename,
+            processed=n8n_result.success
         )
-        
+
         # Save to database
         created_action = await create_voice_action(voice_action)
-        
-        # Return response
-        return VoiceActionResponse(
+
+        # Return response with n8n result
+        response = VoiceActionResponse(
             id=str(created_action.id),
             userId=created_action.userId,
             audioTranscript=created_action.audioTranscript,
@@ -128,6 +137,17 @@ async def upload_audio(
             processed=created_action.processed,
             timestamp=created_action.timestamp
         )
+
+        # Add n8n result to response (this will be accessible in JSON format)
+        response_dict = response.model_dump()
+        response_dict["n8nResult"] = {
+            "success": n8n_result.success,
+            "result": n8n_result.result,
+            "error": n8n_result.error,
+            "processingTime": n8n_result.processingTime
+        }
+
+        return response_dict
         
     except Exception as e:
         logger.error(f"Error processing audio upload: {e}")
@@ -192,6 +212,75 @@ async def generate_session():
     Generate a new session ID for a user
     """
     return {"userId": str(uuid.uuid4())}
+
+
+@app.post("/api/webhook/voice-message")
+async def voice_message_webhook(
+    audio: UploadFile = File(...),
+    userId: str = Form(...),
+    timestamp: Optional[str] = Form(None)
+):
+    """
+    Webhook endpoint for receiving audio files and processing them through N8N AI workflow
+    """
+    try:
+        logger.info(f"Received voice webhook for user: {userId}")
+
+        # Validate file
+        if not audio.filename:
+            raise HTTPException(status_code=400, detail="No audio file provided")
+
+        # Check file size
+        content = await audio.read()
+        if len(content) > settings.MAX_AUDIO_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large. Maximum size is {settings.MAX_AUDIO_FILE_SIZE} bytes"
+            )
+
+        # Process through N8N workflow with audio file
+        n8n_result = await n8n_service.process_voice_audio(
+            user_id=userId,
+            audio_content=content,
+            audio_filename=audio.filename
+        )
+
+        # Create voice action record (transcript will come from N8N)
+        transcript = n8n_result.result.get('transcript', '') if n8n_result.result else ''
+        voice_action = VoiceActionCreate(
+            userId=userId,
+            audioTranscript=transcript,
+            audioFileName=audio.filename,
+            processed=n8n_result.success
+        )
+
+        # Save to database
+        created_action = await create_voice_action(voice_action)
+
+        # Return response with N8N AI processing result
+        return {
+            "success": True,
+            "message": "Voice message processed by AI",
+            "actionId": str(created_action.id),
+            "actionData": {
+                "audioTranscript": transcript,
+                "audioFileName": audio.filename,
+                "userId": userId,
+                "timestamp": created_action.timestamp
+            },
+            "n8nResult": {
+                "success": n8n_result.success,
+                "result": n8n_result.result,
+                "error": n8n_result.error,
+                "processingTime": n8n_result.processingTime
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing voice webhook: {e}")
+        raise HTTPException(status_code=500, detail=f"Error processing voice webhook: {str(e)}")
 
 
 if __name__ == "__main__":

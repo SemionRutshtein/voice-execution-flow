@@ -22,6 +22,32 @@ services:
       timeout: 10s
       retries: 3
 
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: banking_voice_n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: false
+      N8N_HOST: 0.0.0.0
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://localhost:5678/
+      GENERIC_TIMEZONE: UTC
+      N8N_LOG_LEVEL: info
+      N8N_SECURE_COOKIE: false
+      N8N_METRICS: true
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - banking_network
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   banking_app:
     build: .
     container_name: banking_voice_app
@@ -36,11 +62,15 @@ services:
       API_PORT: 8000
       DEBUG: "false"
       TEMP_AUDIO_DIR: /app/temp_audio
+      N8N_WEBHOOK_URL: http://n8n:5678/webhook/voice-process
+      N8N_TIMEOUT: 60
     volumes:
       - ./temp_audio:/app/temp_audio
       - ./static:/app/static
     depends_on:
       mongodb:
+        condition: service_healthy
+      n8n:
         condition: service_healthy
     networks:
       - banking_network
@@ -56,4 +86,6 @@ networks:
 
 volumes:
   mongodb_data:
+    driver: local
+  n8n_data:
     driver: local
