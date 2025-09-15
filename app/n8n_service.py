@@ -115,6 +115,23 @@ class N8NService:
                         result=result_data,
                         processingTime=processing_time
                     )
+                elif response.status_code == 404:
+                    # N8N workflow not configured - provide fallback response
+                    logger.warning("N8N workflow not configured (404). Providing fallback response.")
+                    fallback_result = {
+                        "transcript": "Voice recorded successfully",
+                        "aiResponse": "Hello! I'm your banking assistant. The N8N workflow is not yet configured. Please set up the workflow in N8N at http://localhost:5678 to enable AI processing with OpenAI.",
+                        "userId": user_id,
+                        "timestamp": time.time(),
+                        "success": True,
+                        "fallback": True
+                    }
+
+                    return N8NProcessingResult(
+                        success=True,
+                        result=fallback_result,
+                        processingTime=processing_time
+                    )
                 else:
                     error_msg = f"N8N AI webhook returned status {response.status_code}: {response.text}"
                     logger.error(error_msg)
