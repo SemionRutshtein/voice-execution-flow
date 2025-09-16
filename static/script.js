@@ -15,9 +15,6 @@ class VoiceBankingApp {
         this.transcriptionText = document.getElementById('transcriptionText');
         this.errorMessage = document.getElementById('errorMessage');
         this.errorText = document.getElementById('errorText');
-        this.showHistoryButton = document.getElementById('showHistoryButton');
-        this.historyContainer = document.getElementById('historyContainer');
-        this.historyList = document.getElementById('historyList');
         this.n8nResult = document.getElementById('n8nResult');
         this.n8nResultContent = document.getElementById('n8nResultContent');
         
@@ -79,9 +76,6 @@ class VoiceBankingApp {
             }
         });
         
-        this.showHistoryButton.addEventListener('click', () => {
-            this.toggleHistory();
-        });
         
         // Keyboard accessibility
         this.recordButton.addEventListener('keydown', (e) => {
@@ -157,8 +151,8 @@ class VoiceBankingApp {
                 type: this.mediaRecorder.mimeType
             });
 
-            // Send directly to N8N webhook for processing
-            await this.sendToN8NWebhook(audioBlob);
+            // Send to new voice processing endpoint
+            await this.processVoiceMessage(audioBlob);
 
         } catch (error) {
             console.error('Error processing audio:', error);
@@ -169,16 +163,15 @@ class VoiceBankingApp {
         }
     }
 
-    async sendToN8NWebhook(audioBlob) {
+    async processVoiceMessage(audioBlob) {
         try {
-            // Create form data for N8N webhook
+            // Create form data for voice processing
             const formData = new FormData();
             formData.append('audio', audioBlob, `recording_${Date.now()}.webm`);
             formData.append('userId', this.userId);
-            formData.append('timestamp', new Date().toISOString());
 
-            // Send to N8N webhook
-            const response = await fetch('/api/webhook/voice-message', {
+            // Send to voice processing endpoint
+            const response = await fetch('/api/process-voice', {
                 method: 'POST',
                 body: formData
             });
@@ -190,16 +183,13 @@ class VoiceBankingApp {
 
             const result = await response.json();
 
-            // Show AI response from N8N
-            this.showAIResponse(result);
+            // Show processing result
+            this.showProcessingResult(result);
 
-            this.updateStatus('Audio processed successfully by AI!');
-
-            // Refresh history
-            setTimeout(() => this.loadHistory(), 1000);
+            this.updateStatus('Voice message processed successfully!');
 
         } catch (error) {
-            console.error('Error sending to N8N webhook:', error);
+            console.error('Error processing voice message:', error);
             throw error;
         }
     }
@@ -245,19 +235,19 @@ class VoiceBankingApp {
         this.statusMessage.textContent = message;
     }
     
-    showAIResponse(result) {
-        // Show the AI transcription and response
-        if (result.n8nResult && result.n8nResult.success) {
-            // Show transcription from AI
-            if (result.actionData && result.actionData.audioTranscript) {
-                this.transcriptionText.textContent = result.actionData.audioTranscript;
+    showProcessingResult(result) {
+        // Show the processing result with detected language and URL
+        if (result.success && result.n8nResult && result.n8nResult.success) {
+            // Show detected language
+            if (result.detectedLanguage) {
+                this.transcriptionText.textContent = `Language detected: ${result.detectedLanguage}`;
                 this.transcriptionResult.classList.remove('hidden');
             }
 
-            // Display AI response
+            // Display N8N processing result with URL
             this.displayN8nResult(result.n8nResult);
         } else {
-            this.showError(result.n8nResult?.error || 'Failed to process with AI');
+            this.showError(result.n8nResult?.error || 'Failed to process voice message');
         }
         this.errorMessage.classList.add('hidden');
     }
@@ -283,14 +273,31 @@ class VoiceBankingApp {
         let resultHtml = '';
 
         if (n8nData.success) {
+            const url = n8nData.result?.url || null;
+            const message = n8nData.result?.message || '';
+            const isFallback = n8nData.result?.fallback || false;
+
             resultHtml = `
                 <div class="n8n-success">
                     <div class="n8n-status">✅ Processing completed successfully</div>
                     <div class="n8n-timing">Processing time: ${n8nData.processingTime?.toFixed(2) || 'N/A'}s</div>
-                    ${n8nData.result ? `
-                        <div class="n8n-response">
-                            <strong>Response:</strong>
-                            <pre>${JSON.stringify(n8nData.result, null, 2)}</pre>
+                    ${url ? `
+                        <div class="n8n-url-result">
+                            <strong>Result URL:</strong>
+                            <div class="url-container">
+                                <a href="${url}" target="_blank" rel="noopener noreferrer" class="result-url">${url}</a>
+                                <button onclick="navigator.clipboard.writeText('${url}')" class="copy-button" title="Copy URL">📋</button>
+                            </div>
+                        </div>
+                    ` : ''}
+                    ${message ? `
+                        <div class="n8n-message">
+                            <strong>Message:</strong> ${message}
+                        </div>
+                    ` : ''}
+                    ${isFallback ? `
+                        <div class="fallback-notice">
+                            <small>⚠️ This is a fallback response. Configure N8N workflow for full functionality.</small>
                         </div>
                     ` : ''}
                 </div>
@@ -313,52 +320,6 @@ class VoiceBankingApp {
         this.n8nResult.classList.remove('hidden');
     }
     
-    async toggleHistory() {
-        if (this.historyContainer.classList.contains('hidden')) {
-            await this.loadHistory();
-            this.historyContainer.classList.remove('hidden');
-            this.showHistoryButton.textContent = 'Hide Previous Requests';
-        } else {
-            this.historyContainer.classList.add('hidden');
-            this.showHistoryButton.textContent = 'Show Previous Requests';
-        }
-    }
-    
-    async loadHistory() {
-        try {
-            const response = await fetch(`/api/user/${this.userId}/actions`);
-            
-            if (!response.ok) {
-                throw new Error('Failed to load history');
-            }
-            
-            const actions = await response.json();
-            this.displayHistory(actions);
-            
-        } catch (error) {
-            console.error('Error loading history:', error);
-            this.historyList.innerHTML = '<div class="history-item"><div class="history-item-text">Failed to load history</div></div>';
-        }
-    }
-    
-    displayHistory(actions) {
-        if (actions.length === 0) {
-            this.historyList.innerHTML = '<div class="history-item"><div class="history-item-text">No previous requests</div></div>';
-            return;
-        }
-        
-        this.historyList.innerHTML = actions.map(action => {
-            const date = new Date(action.timestamp);
-            const timeString = date.toLocaleString();
-            
-            return `
-                <div class="history-item">
-                    <div class="history-item-text">"${action.audioTranscript}"</div>
-                    <div class="history-item-time">${timeString}</div>
-                </div>
-            `;
-        }).join('');
-    }
     
     getSupportedMimeType() {
         const types = [
