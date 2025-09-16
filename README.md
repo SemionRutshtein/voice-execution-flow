@@ -270,7 +270,3 @@ For issues and questions:
 1. Check `INTEGRATION_COMPLETE.md` for setup help
 2. Review `setup-n8n-workflow.md` for N8N configuration
 3. Create an issue on GitHub
-
----
-
-🤖 Built with AI: **FastAPI** + **N8N** + **OpenAI** + **MongoDB** + **Docker**
